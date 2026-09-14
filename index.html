@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S.A Studio — Visual Editor &amp; Designer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,450;0,9..144,600;1,9..144,400;1,9..144,500&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#09080d;
+    --surface:#141019;
+    --surface-2:#1b1623;
+    --violet:#8b5cf6;
+    --violet-soft:#c9b8ff;
+    --violet-deep:#3c2472;
+    --text:#f3f0fa;
+    --text-muted:#9791a8;
+    --line: rgba(243,240,250,0.09);
+    --serif: 'Fraunces', serif;
+    --sans: 'Bricolage Grotesque', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+  }
+  a{color:inherit;}
+  ::selection{background:var(--violet); color:#0a0810;}
+
+  /* film grain texture */
+  .grain{
+    position:fixed; inset:0; pointer-events:none; z-index:40; opacity:0.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- NAV ---------- */
+  header{
+    position:fixed; top:0; left:0; right:0; z-index:50;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:26px 5vw;
+    transition:background .4s ease, backdrop-filter .4s ease, padding .4s ease;
+  }
+  header.scrolled{
+    padding:16px 5vw;
+    background:rgba(9,8,13,0.72);
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .mark{
+    font-family:var(--serif); font-weight:500; font-size:1.15rem; letter-spacing:0.01em;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  .mark .dot{width:6px; height:6px; border-radius:50%; background:var(--violet); display:inline-block; transform:translateY(-2px);}
+  nav ul{list-style:none; display:flex; gap:38px; margin:0; padding:0;}
+  nav a{
+    font-size:0.92rem; text-decoration:none; color:var(--text-muted);
+    position:relative; padding-bottom:4px;
+  }
+  nav a::after{
+    content:''; position:absolute; left:0; bottom:0; width:0; height:1px; background:var(--violet-soft);
+    transition:width .3s ease;
+  }
+  nav a:hover{color:var(--text);}
+  nav a:hover::after{width:100%;}
+  .nav-links{display:flex; align-items:center; gap:38px;}
+  .cta-pill{
+    border:1px solid rgba(243,240,250,0.22); border-radius:999px; padding:9px 20px;
+    font-size:0.85rem; text-decoration:none; color:var(--text); white-space:nowrap;
+    transition:border-color .3s ease, background .3s ease;
+  }
+  .cta-pill:hover{border-color:var(--violet); background:rgba(139,92,246,0.08);}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    min-height:100svh; display:flex; flex-direction:column; justify-content:flex-end;
+    padding:0 5vw 8vh; position:relative; overflow:hidden;
+  }
+  .hero-video{
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    z-index:0; filter:saturate(1.05) contrast(1.05);
+  }
+  .hero-scrim{
+    position:absolute; inset:0; z-index:1;
+    background:
+      radial-gradient(ellipse 60% 50% at 82% 18%, rgba(139,92,246,0.28), transparent 60%),
+      linear-gradient(180deg, rgba(9,8,13,0.35) 0%, rgba(9,8,13,0.55) 55%, rgba(9,8,13,0.94) 100%);
+  }
+  .hero > *:not(.hero-video):not(.hero-scrim){ position:relative; z-index:2; }
+  .hero-frame{
+    position:absolute; top:22vh; left:5vw; right:5vw; bottom:26vh;
+    border:1px solid var(--line); pointer-events:none;
+  }
+  .hero-frame::before, .hero-frame::after{
+    content:''; position:absolute; width:14px; height:14px; border:1px solid rgba(243,240,250,0.35);
+  }
+  .hero-frame::before{ top:-1px; left:-1px; border-right:none; border-bottom:none; }
+  .hero-frame::after{ bottom:-1px; right:-1px; border-left:none; border-top:none; }
+  .hero-kicker{
+    font-family:var(--sans); font-size:0.85rem; color:var(--text-muted); margin:0 0 22px; max-width:360px; line-height:1.5;
+  }
+  .hero h1{
+    font-family:var(--serif); font-weight:450; font-size:clamp(2.6rem, 6.4vw, 6.4rem);
+    line-height:0.98; letter-spacing:-0.01em; margin:0; max-width:16ch;
+    overflow:hidden;
+  }
+  .hero h1 span{
+    display:block; transform:translateY(110%); animation:reveal 1s cubic-bezier(.19,1,.22,1) forwards;
+  }
+  .hero h1 span:nth-child(1){animation-delay:.05s;}
+  .hero h1 span:nth-child(2){animation-delay:.16s;}
+  .hero h1 em{font-style:italic; color:var(--violet-soft); font-weight:400;}
+  @keyframes reveal{ to{ transform:translateY(0); } }
+
+  .hero-foot{
+    display:flex; justify-content:space-between; align-items:flex-end; margin-top:44px; gap:24px; flex-wrap:wrap;
+  }
+  .hero-foot p{ max-width:34ch; color:var(--text-muted); font-size:0.98rem; line-height:1.6; margin:0; }
+  .scrub{
+    display:flex; align-items:center; gap:10px; font-size:0.8rem; color:var(--text-muted);
+    font-variant-numeric:tabular-nums;
+  }
+  .scrub .bar{width:120px; height:1px; background:var(--line); position:relative; overflow:hidden;}
+  .scrub .bar::after{
+    content:''; position:absolute; left:0; top:0; height:100%; width:38%; background:var(--violet);
+    animation:scrub 3.2s ease-in-out infinite alternate;
+  }
+  @keyframes scrub{ from{ width:12%; } to{ width:82%; } }
+
+  /* ---------- DIFFERENCE (video + 3-stage sequence) ---------- */
+  .difference{ border-bottom:1px solid var(--line); }
+  .diff-grid{ display:grid; grid-template-columns:1.2fr 1fr; gap:6vw; align-items:center; }
+  .diff-player{
+    position:relative; aspect-ratio:16/9; background:#000; overflow:hidden; cursor:pointer;
+    border:1px solid var(--line);
+  }
+  .diff-player video{ width:100%; height:100%; object-fit:cover; display:block; }
+  .diff-player .big-play{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg, rgba(9,8,13,0.15), rgba(9,8,13,0.55));
+    transition:opacity .4s ease;
+  }
+  .diff-player.playing .big-play{ opacity:0; pointer-events:none; }
+  .big-play .circle{
+    width:74px; height:74px; border-radius:50%; border:1px solid rgba(243,240,250,0.5);
+    display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px);
+    background:rgba(9,8,13,0.35); transition:transform .3s ease, border-color .3s ease;
+  }
+  .diff-player:hover .circle{ transform:scale(1.06); border-color:var(--violet-soft); }
+  .big-play svg{ width:18px; height:18px; fill:var(--text); margin-left:3px; }
+  .diff-steps ol{ list-style:none; margin:0; padding:0; counter-reset:step; }
+  .diff-steps li{
+    display:flex; gap:20px; padding:22px 0; border-top:1px solid var(--line);
+  }
+  .diff-steps li:last-child{ border-bottom:1px solid var(--line); }
+  .diff-steps .n{ font-family:var(--serif); font-style:italic; font-size:1.6rem; color:var(--violet-soft); flex:0 0 auto; }
+  .diff-steps h4{ margin:0 0 6px; font-size:1.02rem; font-weight:600; }
+  .diff-steps p{ margin:0; color:var(--text-muted); font-size:0.92rem; line-height:1.6; max-width:36ch; }
+  @media (max-width:900px){ .diff-grid{ grid-template-columns:1fr; } }
+  .section-head{ display:flex; justify-content:space-between; align-items:flex-end; gap:24px; margin-bottom:64px; flex-wrap:wrap; }
+  .section-head h2{
+    font-family:var(--serif); font-weight:450; font-size:clamp(1.8rem, 3.4vw, 2.8rem); margin:0; max-width:14ch; line-height:1.08;
+  }
+  .section-head p{ color:var(--text-muted); max-width:34ch; margin:0; font-size:0.98rem; line-height:1.6; }
+
+  /* ---------- REEL (horizontal filmstrip) ---------- */
+  .reel-wrap{ border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:0; }
+  .reel{
+    display:flex; gap:1px; overflow-x:auto; scroll-snap-type:x proximity; padding:0 5vw;
+    scrollbar-width:none;
+  }
+  .reel::-webkit-scrollbar{ display:none; }
+  .cut{
+    flex:0 0 auto; width:min(60vw, 420px); aspect-ratio:16/10; scroll-snap-align:start;
+    position:relative; display:flex; align-items:flex-end; padding:22px; overflow:hidden;
+    background:var(--surface);
+    transition:transform .45s cubic-bezier(.19,1,.22,1);
+  }
+  .cut::before{
+    content:''; position:absolute; inset:0; background-size:cover; background-position:center;
+    transition:transform .6s ease;
+  }
+  .cut::after{
+    content:''; position:absolute; inset:0; z-index:1;
+    background:linear-gradient(180deg, rgba(9,8,13,0.08) 0%, rgba(9,8,13,0.35) 55%, rgba(9,8,13,0.88) 100%);
+  }
+  .cut:nth-child(1)::before{ background-image:url('assets/slow-build-reel.jpg'); }
+  .cut:nth-child(2)::before{ background-image:url('assets/night-runner-reel.jpg'); }
+  .cut:nth-child(3)::before{ background-image:url('assets/static-motion.jpg'); }
+  .cut:nth-child(4)::before{ background-image:url('assets/field-notes.jpg'); }
+  .cut:nth-child(5)::before{ background-image:url('assets/afterglow-reel.jpg'); }
+  .cut:hover{ transform:translateY(-6px); }
+  .cut:hover::before{ transform:scale(1.05); }
+  .cut-info{ position:relative; z-index:2; }
+  .cut-info .num{ font-size:0.75rem; color:rgba(243,240,250,0.55); font-family:var(--sans); }
+  .cut-info h3{ font-family:var(--serif); font-weight:450; font-size:1.3rem; margin:4px 0 2px; }
+  .cut-info span{ font-size:0.82rem; color:var(--text-muted); }
+  .play{
+    position:absolute; top:22px; right:22px; z-index:2; width:38px; height:38px; border-radius:50%;
+    border:1px solid rgba(243,240,250,0.3); display:flex; align-items:center; justify-content:center;
+    transition:border-color .3s ease, background .3s ease;
+  }
+  .cut:hover .play{ border-color:var(--violet); background:rgba(139,92,246,0.15); }
+  .play svg{ width:11px; height:11px; fill:var(--text); margin-left:2px; }
+  .reel-hint{ padding:18px 5vw; font-size:0.8rem; color:var(--text-muted); display:flex; justify-content:space-between; }
+
+  /* ---------- SERVICES (asymmetric, not identical cards) ---------- */
+  .services{ display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:1px; background:var(--line); border:1px solid var(--line); }
+  .service{ background:var(--bg); padding:44px 36px; display:flex; flex-direction:column; justify-content:space-between; min-height:340px; }
+  .service.lg{ grid-row:span 2; min-height:auto; background:var(--surface); }
+  .service h3{ font-family:var(--serif); font-weight:450; font-size:1.6rem; margin:0 0 14px; }
+  .service p{ color:var(--text-muted); font-size:0.95rem; line-height:1.65; margin:0; max-width:32ch; }
+  .service .tags{ display:flex; flex-wrap:wrap; gap:8px; margin-top:26px; }
+  .service .tags span{
+    font-size:0.78rem; color:var(--text-muted); border:1px solid var(--line); padding:5px 11px; border-radius:999px;
+  }
+  @media (max-width:900px){
+    .services{ grid-template-columns:1fr; }
+    .service.lg{ grid-row:auto; }
+  }
+
+  /* ---------- WORK (editorial alternating) ---------- */
+  .case{
+    display:grid; grid-template-columns:1fr 1fr; gap:6vw; align-items:center;
+    padding:70px 0; border-top:1px solid var(--line);
+  }
+  .case:last-child{ border-bottom:1px solid var(--line); }
+  .case:nth-child(even){ direction:rtl; }
+  .case:nth-child(even) > *{ direction:ltr; }
+  .case-visual{
+    aspect-ratio:4/3; position:relative; overflow:hidden;
+  }
+  .case-visual .frame{
+    position:absolute; inset:0; background-size:cover; background-position:center;
+  }
+  .case:nth-child(1) .frame{ background-image:url('assets/slow-build-case.jpg'); }
+  .case:nth-child(2) .frame{ background-image:url('assets/night-runner-case.jpg'); }
+  .case:nth-child(3) .frame{ background-image:url('assets/afterglow-case.jpg'); }
+  .case-visual .scrim{
+    position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(9,8,13,0.05) 0%, rgba(9,8,13,0.15) 60%, rgba(9,8,13,0.55) 100%);
+  }
+  .case-visual.dim .scrim{
+    background:linear-gradient(180deg, rgba(9,8,13,0.35), rgba(9,8,13,0.72));
+  }
+  .case-copy .eyebrow{ color:var(--text-muted); font-size:0.85rem; margin:0 0 10px; }
+  .case-copy h3{ font-family:var(--serif); font-weight:450; font-size:clamp(1.6rem,2.6vw,2.3rem); margin:0 0 16px; line-height:1.15; }
+  .case-copy p{ color:var(--text-muted); font-size:0.98rem; line-height:1.7; max-width:42ch; margin:0 0 22px; }
+  .case-copy .meta{ display:flex; gap:26px; font-size:0.82rem; color:var(--text-muted); border-top:1px solid var(--line); padding-top:16px; }
+  .case-copy .meta div span{ display:block; color:var(--text); font-size:0.92rem; margin-top:4px; }
+
+  /* ---------- PROCESS (genuine sequence -> numbers justified) ---------- */
+  .process{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .step{ background:var(--bg); padding:40px 28px; }
+  .step .n{ font-family:var(--serif); font-style:italic; font-size:2.2rem; color:var(--violet-soft); display:block; margin-bottom:22px; }
+  .step h4{ font-size:1.05rem; margin:0 0 10px; font-weight:600; }
+  .step p{ color:var(--text-muted); font-size:0.9rem; line-height:1.6; margin:0; }
+  @media (max-width:900px){ .process{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:560px){ .process{ grid-template-columns:1fr; } }
+
+  /* ---------- CONTACT ---------- */
+  .contact{
+    background:radial-gradient(ellipse 70% 60% at 50% 20%, rgba(139,92,246,0.18), transparent 65%), var(--surface);
+    text-align:center; padding:min(20vh,180px) 5vw;
+  }
+  .contact h2{
+    font-family:var(--serif); font-weight:450; font-size:clamp(2.2rem,5.6vw,4.6rem); margin:0 auto 30px; max-width:14ch; line-height:1.05;
+  }
+  .contact-link{
+    font-family:var(--serif); font-style:italic; font-size:clamp(1.3rem,2.4vw,1.8rem); text-decoration:none;
+    border-bottom:1px solid rgba(243,240,250,0.3); padding-bottom:6px; transition:border-color .3s ease, color .3s ease;
+  }
+  .contact-link:hover{ color:var(--violet-soft); border-color:var(--violet-soft); }
+  .socials{ margin-top:50px; display:flex; justify-content:center; gap:30px; }
+  .socials a{ font-size:0.88rem; color:var(--text-muted); text-decoration:none; }
+  .socials a:hover{ color:var(--text); }
+
+  footer{
+    display:flex; justify-content:space-between; padding:28px 5vw; font-size:0.8rem; color:var(--text-muted);
+    border-top:1px solid var(--line);
+  }
+
+  a:focus-visible, button:focus-visible{ outline:2px solid var(--violet-soft); outline-offset:3px; }
+
+  @media (max-width:700px){
+    nav ul{ display:none; }
+    .hero-foot{ flex-direction:column; align-items:flex-start; }
+    .case{ grid-template-columns:1fr; }
+    .case:nth-child(even){ direction:ltr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<header id="siteHeader">
+  <div class="mark">S.A Studio<span class="dot"></span></div>
+  <div class="nav-links">
+    <nav>
+      <ul>
+        <li><a href="#work">Work</a></li>
+        <li><a href="#services">Services</a></li>
+        <li><a href="#process">Process</a></li>
+      </ul>
+    </nav>
+    <a class="cta-pill" href="#contact">Start a project</a>
+  </div>
+</header>
+
+<section class="hero">
+  <video class="hero-video" autoplay muted loop playsinline poster="assets/hero-poster.jpg">
+    <source src="assets/hero-banner.mp4" type="video/mp4">
+  </video>
+  <div class="hero-scrim"></div>
+  <div class="hero-frame"></div>
+  <p class="hero-kicker">Video editor &amp; visual designer — cutting stories that hold attention, frame by frame.</p>
+  <h1><span>Every frame</span><span>earns its <em>cut.</em></span></h1>
+  <div class="hero-foot">
+    <p>I edit long-form and short-form video, retouch photography, and design the graphics that hold a brand together — one person, one continuous eye across the whole visual language.</p>
+    <div class="scrub">
+      <span>00:00</span>
+      <div class="bar"></div>
+      <span>04:12</span>
+    </div>
+  </div>
+</section>
+
+<div class="reel-wrap">
+  <div class="reel" id="reel">
+    <div class="cut">
+      <div class="play"><svg viewBox="0 0 12 14"><path d="M0 0 L12 7 L0 14 Z"/></svg></div>
+      <div class="cut-info"><span class="num">Cut 01</span><h3>Slow Build</h3><span>Documentary short</span></div>
+    </div>
+    <div class="cut">
+      <div class="play"><svg viewBox="0 0 12 14"><path d="M0 0 L12 7 L0 14 Z"/></svg></div>
+      <div class="cut-info"><span class="num">Cut 02</span><h3>Night Runner</h3><span>Brand film</span></div>
+    </div>
+    <div class="cut">
+      <div class="play"><svg viewBox="0 0 12 14"><path d="M0 0 L12 7 L0 14 Z"/></svg></div>
+      <div class="cut-info"><span class="num">Cut 03</span><h3>Static / Motion</h3><span>Social series</span></div>
+    </div>
+    <div class="cut">
+      <div class="play"><svg viewBox="0 0 12 14"><path d="M0 0 L12 7 L0 14 Z"/></svg></div>
+      <div class="cut-info"><span class="num">Cut 04</span><h3>Field Notes</h3><span>Narrative edit</span></div>
+    </div>
+    <div class="cut">
+      <div class="play"><svg viewBox="0 0 12 14"><path d="M0 0 L12 7 L0 14 Z"/></svg></div>
+      <div class="cut-info"><span class="num">Cut 05</span><h3>Afterglow</h3><span>Music video</span></div>
+    </div>
+  </div>
+  <div class="reel-hint"><span>Drag to scrub the reel</span><span>05 selected cuts</span></div>
+</div>
+
+<section class="difference" id="difference">
+  <div class="section-head">
+    <h2>The difference is in the cut.</h2>
+    <p>Same footage, three stages — this is what actually changes between a raw clip and a finished edit.</p>
+  </div>
+  <div class="diff-grid">
+    <div class="diff-player" id="diffPlayer">
+      <video id="diffVideo" playsinline poster="assets/diff-cut-poster.jpg">
+        <source src="assets/diff-cut.mp4" type="video/mp4">
+      </video>
+      <div class="big-play"><div class="circle"><svg viewBox="0 0 12 14"><path d="M0 0 L12 7 L0 14 Z"/></svg></div></div>
+    </div>
+    <div class="diff-steps">
+      <ol>
+        <li><span class="n">01</span><div><h4>Raw footage</h4><p>Unedited camera output — flat color, inconsistent pacing, no sound design.</p></div></li>
+        <li><span class="n">02</span><div><h4>Editing process</h4><p>Structuring the cut, grading color, and layering sound to build rhythm.</p></div></li>
+        <li><span class="n">03</span><div><h4>Professional final result</h4><p>A finished piece with intentional pacing, color, and sound — ready to publish.</p></div></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section id="services">
+  <div class="section-head">
+    <h2>One eye, three disciplines.</h2>
+    <p>Video, photo, and design work that share the same rhythm — so nothing a client publishes looks like it came from three different people.</p>
+  </div>
+  <div class="services">
+    <div class="service lg">
+      <div>
+        <h3>Video editing</h3>
+        <p>Narrative pacing, sound design, and color for long-form, short-form, and everything built to be watched more than once.</p>
+      </div>
+      <div class="tags"><span>Long-form</span><span>Shorts &amp; reels</span><span>Color</span><span>Sound design</span></div>
+    </div>
+    <div class="service">
+      <h3>Photo editing</h3>
+      <p>Retouching and color grading that keeps a subject looking like themselves, only better lit.</p>
+    </div>
+    <div class="service">
+      <h3>Graphic design</h3>
+      <p>Thumbnails, titles, and the small graphic language that ties a channel or brand together.</p>
+    </div>
+  </div>
+</section>
+
+<section id="work">
+  <div class="section-head">
+    <h2>Selected work.</h2>
+    <p>A few edits that show the range — from quiet documentary pacing to fast, rhythmic cutting.</p>
+  </div>
+
+  <div class="case">
+    <div class="case-visual"><div class="frame"></div><div class="scrim"></div></div>
+    <div class="case-copy">
+      <p class="eyebrow">Documentary short</p>
+      <h3>Slow Build</h3>
+      <p>A patient edit built around silence and breath — cutting on stillness rather than motion, so the few fast moments land harder.</p>
+      <div class="meta">
+        <div>Role<span>Edit, color, sound</span></div>
+        <div>Runtime<span>11:40</span></div>
+        <div>Format<span>16:9</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="case">
+    <div class="case-visual dim"><div class="frame"></div><div class="scrim"></div></div>
+    <div class="case-copy">
+      <p class="eyebrow">Brand film</p>
+      <h3>Night Runner</h3>
+      <p>Fast-cut brand piece intercutting practical footage with motion graphics, built to hold attention in the first three seconds.</p>
+      <div class="meta">
+        <div>Role<span>Edit, motion graphics</span></div>
+        <div>Runtime<span>0:45</span></div>
+        <div>Format<span>9:16</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="case">
+    <div class="case-visual"><div class="frame"></div><div class="scrim"></div></div>
+    <div class="case-copy">
+      <p class="eyebrow">Music video</p>
+      <h3>Afterglow</h3>
+      <p>Rhythmic edit cut entirely to the track's transients, with a photo-edit pass on every still frame used for the poster art.</p>
+      <div class="meta">
+        <div>Role<span>Edit, photo retouch</span></div>
+        <div>Runtime<span>3:12</span></div>
+        <div>Format<span>16:9</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="process">
+  <div class="section-head">
+    <h2>How a project moves.</h2>
+    <p>The same four stages, whether it's a five-minute reel or a full brand package.</p>
+  </div>
+  <div class="process">
+    <div class="step"><span class="n">01</span><h4>Ingest &amp; select</h4><p>Reviewing raw footage or assets and marking the moments worth building around.</p></div>
+    <div class="step"><span class="n">02</span><h4>Structure the cut</h4><p>A rough assembly focused on pacing and story before any polish goes in.</p></div>
+    <div class="step"><span class="n">03</span><h4>Finish</h4><p>Color, sound design, graphics, and retouching layered on top of a locked cut.</p></div>
+    <div class="step"><span class="n">04</span><h4>Deliver</h4><p>Exports formatted for wherever it's going — platform, aspect ratio, and spec handled up front.</p></div>
+  </div>
+</section>
+
+<section id="contact" class="contact">
+  <h2>Got a cut that needs making?</h2>
+  <a class="contact-link" href="mailto:shaheerans08@gmail.com">shaheerans08@gmail.com</a>
+  <div class="socials">
+    <a href="#">YouTube</a>
+    <a href="#">Instagram</a>
+    <a href="#">X / Twitter</a>
+  </div>
+</section>
+
+<footer>
+  <span>S.A Studio — Visual Editor &amp; Designer</span>
+  <span>© 2026</span>
+</footer>
+
+<script>
+  const header = document.getElementById('siteHeader');
+  window.addEventListener('scroll', () => {
+    header.classList.toggle('scrolled', window.scrollY > 40);
+  });
+
+  // click-to-play for the "Difference" video
+  const diffPlayer = document.getElementById('diffPlayer');
+  const diffVideo = document.getElementById('diffVideo');
+  diffPlayer.addEventListener('click', () => {
+    if (diffVideo.paused) {
+      diffVideo.play();
+      diffPlayer.classList.add('playing');
+    } else {
+      diffVideo.pause();
+      diffPlayer.classList.remove('playing');
+    }
+  });
+  diffVideo.addEventListener('ended', () => diffPlayer.classList.remove('playing'));
+
+  // drag-to-scrub the reel
+  const reel = document.getElementById('reel');
+  let isDown = false, startX, scrollLeft;
+  reel.addEventListener('mousedown', (e) => {
+    isDown = true; reel.style.cursor = 'grabbing';
+    startX = e.pageX - reel.offsetLeft; scrollLeft = reel.scrollLeft;
+  });
+  ['mouseleave','mouseup'].forEach(evt => reel.addEventListener(evt, () => { isDown = false; reel.style.cursor = 'grab'; }));
+  reel.addEventListener('mousemove', (e) => {
+    if(!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - reel.offsetLeft;
+    reel.scrollLeft = scrollLeft - (x - startX) * 1.2;
+  });
+</script>
+
+</body>
+</html>
